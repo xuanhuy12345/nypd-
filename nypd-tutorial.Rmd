@@ -1,0 +1,509 @@
+---
+title: "NYPD Data Visualization"
+output:
+  learnr::tutorial:
+  progressive: true
+allow_skip: true
+runtime: shiny_prerendered
+---
+
+```{r setup, include=FALSE}
+library(shiny)
+library(readr)
+library(plyr)
+library(dplyr)
+library(data.table)
+library(ggplot2)
+library(reshape2)
+library(scales)
+library(ggthemes)
+
+ALL_AS_EXERCISE = TRUE  # switch between interactive online activities (true means interactive)
+EVAL_HO_BLOCKS  = FALSE # code that only executes in student handouts
+FIG_HEIGHT = 2
+
+####### Read in the nypd dataset #######
+nypd_arr <- read_csv("NYPDBarData.csv")
+
+#Remove an outlier
+nypd_arr <- subset(nypd_arr, pct<=200)
+
+nypd_data <- nypd_arr
+nypd_data <- mutate(nypd_data, CrimeType = replace(CrimeType, CrimeType == "Tresspass" ,"Trespass"))
+```
+
+
+<!-- START_SECTION -->
+## Getting Started
+  
+This online tutorial is designed to introduce you to data visualization with the NYPD data.
+
+### Packages and Datasets
+
+You will need the following packages to complete this tutorial:
+  
+```{r load_packages, exercise = ALL_AS_EXERCISE, eval = EVAL_HO_BLOCKS}
+# install.packages("ggplot2")
+library(ggplot2)
+library(dplyr)
+```
+
+You will also need the following datasets:
+  
+```{r load_datasets, exercise = ALL_AS_EXERCISE, eval = EVAL_HO_BLOCKS}
+nypd_data 
+```
+
+<!-- END_SECTION -->
+  
+  
+<!-- START_SECTION -->
+## Introduction
+  
+This tutorial will focus on creating graphs to effectively communicate key patterns within a dataset. There are numerous ways to create graphs, however this tutorial will focus on the R package ggplot2, created by Hadley Wickham. The key function used in `ggplot2` is `ggplot()` (the *grammar of graphics plot*). This function is different from other graphics functions because it uses a particular grammar inspired by Leland Wilkinson’s landmark book, *The Grammar of Graphics*, which focuses on thinking about, reasoning with, and communicating with graphics. 
+
+**Data**: In this tutorial, the stop-and-frisk reports data from the  New York City Police Department (NYPD). 
+
+To start, let's learn about some variables from the dataset that we will be working with:
+
+### Variables of Interest:
+
+* `Gender`:
+* `Race` :
+* `Year`	
+* `CrimeType`	
+* `Arrested`	
+* `Frisked`	
+* `Searched`	
+* `HandCuff`	
+* `PepperSpray`	
+* `Firearm`	
+* `Other`	
+* `CEW`	
+* `Stopped`	
+* `Verbal`	
+* `Summons`
+
+Run the following code to get a peak of the NYPD data:
+  
+```{r display_data, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE}
+# The code below uses the head() function to view the first few lines of the NYPD data.
+head(nypd_data)
+```
+
+```{r display_summary_data, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE}
+# The code below uses the table() command to see summary data for NYPD data.
+table(nypd_data)
+```
+<!-- END_SECTION -->
+  
+<!-- START_SECTION -->
+## Our First Graph
+
+If you worked through the previous lab, you have already used an app to create some bar charts of the NYPD data.
+
+```{r display_plot, echo = FALSE}
+ggplot(data = nypd_data, aes(x = Race, y = Arrested)) +
+  geom_bar(stat = "identity") +
+  labs(title="Number of Arrested by Race")
+```
+
+Whenever we are coding it in R it is important to be able to clearly understand the following two questions. 
+
+1. What do you want the computer to do?
+2. What must the computer know in order to do that?
+
+To make the above plot, the answers to our questions are
+
+1. **What we want the computer to do:**
+
+      *	Make a bar chart
+
+2. **What the computer needs to know:** The data used for the plot
+      
+      *	The variable to be plotted along the x-axis.
+      *	The variable to be plotted along the y-axis.
+      *	The data set that contains the variables.
+
+### Plot Template
+
+All of our graphs will have the same basic template to identify the needed information, as shown below:
+
+<h4 style="text-align: center;">
+  ggplot( aes(
+  <span style="border: 2px solid gray; padding: 2px;">x</span>
+  ,
+  <span style="border: 2px solid gray; padding: 2px;">y</span>
+  ), data =
+  <span style="border: 2px solid gray; padding: 2px;">mydata</span>
+  ) + 
+  <span style="border: 2px solid gray; padding: 2px;">geom_bar(stat = "identity")</span>
+</h4>
+
+<br>
+where the pieces in the boxes can be replaced with specific variables to achieve different purposes:
+
+<!-- make the table -->
+<div style="display: flex; justify-content: center; align-items: center; margin-bottom: 20px;">
+  <table border="1" style="width: 60%; border-collapse: collapse; text-align: center;">
+    <tr>
+      <th>Box</th>
+      <th>Specific Information</th>
+      <th>Purpose</th>
+    </tr>
+    <tr>
+      <td>Y</td>
+      <td>Stopped</td>
+      <td>y-axis variable</td>
+    </tr>
+    <tr>
+      <td>X</td>
+      <td>Race</td>
+      <td>x-axis variable</td>
+    </tr>
+    <tr>
+      <td>mydata</td>
+      <td>nypd_data</td>
+      <td>name of data set</td>
+    </tr>
+    <tr>
+      <td>goal</td>
+      <td>geom_bar(stat = "identity")</td>
+      <td>plot bars</td>
+    </tr>
+  </table>
+</div>
+
+
+Now, we can put each piece in its place in the template and then run the code to create the plot.
+
+### Make your first graph
+
+```{r create_plot1, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE}
+# The code below uses ggplot() and geom_bar() to create a bar chart of stops by race
+ggplot(data = nypd_data, aes(x = Race, y = Stopped)) +
+  geom_bar(stat = "identity")
+```
+
+### Exercise 1: Create a new bar chart showing the count of stops by gender
+```{r create_plot_exercise, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE}
+# Write your code here
+
+
+```
+<!-- END_SECTION -->
+
+<!-- START_SECTION -->
+## Labels and Annotations
+
+Adding labels and titles helps improve the readability of your plots. Let's add some to our bar chart.
+
+#### Example 1 - adding labels and title to the plot
+```{r add_labels, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
+# The code below adds labels and a title to the bar chart
+ggplot(data = nypd_data, aes(x = Race, y = Stopped)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Number of Stops by Race", x = "Race", y = "Number of Stops")
+```
+
+### Exercise 2: Create a new bar chart showing the count of arrests by year, and add appropriate labels and a title.
+```{r add_labels_exercise, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE}
+# Write your code here
+
+
+```
+<!-- END_SECTION -->
+  
+<!-- START_SECTION -->
+## Coloring, Faceting, and Other Aesthetics
+
+After building the basics of the plot, we can use different aesthetics in ggplot2 to enhance the visualizations. For example, we can use color to distinguish data, facet data to create subplots, and adjust the transparency, and type of bars.
+
+### Coloring
+
+The following example shows how coloring helps distinguish between different categories within our data.
+
+#### Example 2.1 - coloring the data by gender
+```{r example_color1, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
+# The code below uses color to distinguish data by another variable (e.g., Gender).
+ggplot(data = nypd_data, aes(x = Race, y = Stopped, fill = Gender)) +
+  geom_bar(stat = "identity", position = "stack") +
+  labs(title = "Number of Stops by Race and Gender", x = "Race", y = "Number of Stops")
+```
+
+
+After adding the color aesthetics on the base layer, we can override aesthetics locally within other layers, so that some layers can have different aesthetics than others.
+
+#### Example 2.2 - a local override of color
+```{r example_color2, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
+# The code below adds a specific color to the bar chart that overrides the fill property
+ggplot(data = nypd_data, aes(x = Race, y = Stopped, fill = Gender)) +
+  geom_bar(stat = "identity", position = "stack", color = "lightblue") +
+  labs(title = "Number of Stops by Race and Gender", x = "Race", y = "Number of Stops")
+```
+
+### Faceting
+
+Faceting allows us to split our plot into multiple subplots based on the levels of some variable in the data set. In the `ggplot2` package, the function `facet_wrap()` is commonly used for faceting the plot.
+
+#### Example 3.1 - faceting by year
+```{r example_facet1, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
+# The code below uses `facet_wrap()` to split the plot based on Year.
+ggplot(data = nypd_data, aes(x = Race, y = Stopped)) +
+  geom_bar(stat = "identity") +
+  facet_wrap(~Year) +
+  labs(title = "Number of Stops by Race and Year", x = "Race", y = "Number of Stops")
+```
+
+#### Example 3.2 - faceting by gender
+```{r example_facet2, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
+# The code below uses `facet_wrap()` to split the plot based on Year.
+ggplot(data = nypd_data, aes(x = Race, y = Stopped)) +
+  geom_bar(stat = "identity") +
+  facet_wrap(~Gender) +
+  labs(title = "Number of Stops by Race and Gender", x = "Race", y = "Number of Stops")
+```
+
+### Other Aesthetics
+Now, let's look at some other ways to adjust the aesthetics of our plot.
+
+
+
+#### Example 4.1 - adjusting transparency of bars
+
+We can adjust the transparency of the bars using the `alpha` parameter. This can be useful when you want to visualize overlapping bars or simply to make the plot look less dense.
+
+```{r example_aesthetics1, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
+# The code below adjusts the transparency of the bars
+ggplot(data = nypd_data, aes(x = Race, y = Stopped, fill = Gender)) +
+  geom_bar(stat = "identity", position = "dodge", alpha = 0.7) +
+  labs(title = "Number of Stops by Race and Gender with Transparency", x = "Race", y = "Number of Stops")
+```
+
+#### Example 4.2 - adjusting bar width
+
+The width of the bars can be adjusted using the `width` parameter. This can help in visualizing plots where bar spacing is crucial for clarity.
+
+```{r example_aesthetics2, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
+# The code below adjusts the width of the bars
+ggplot(data = nypd_data, aes(x = Race, y = Stopped, fill = Gender)) +
+  geom_bar(stat = "identity", position = "dodge", width = 0.5) +
+  labs(title = "Number of Stops by Race and Gender with Adjusted Bar Width", x = "Race", y = "Number of Stops")
+```
+
+#### Example 4.3 - adding bar border color
+
+Adding a border color to the bars can enhance the visual separation between different categories and make the plot more visually appealing.
+
+```{r example_aesthetics3, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
+# The code below adds a border color to the bars
+ggplot(data = nypd_data, aes(x = Race, y = Stopped, fill = Gender)) +
+  geom_bar(stat = "identity", position = "stack", color = "black", size = 0.2) +
+  labs(title = "Number of Stops by Race and Gender with Border Color", x = "Race", y = "Number of Stops")
+```
+
+### Exercise 3: Create a new bar chart showing the number of stops by race, faceted by year, and use color to distinguish by gender.
+```{r facet_color_exercise, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE}
+# Write your code here
+
+
+```
+<!-- END_SECTION -->
+  
+<!-- START_SECTION -->
+## Themes
+  
+Themes are pre-built style templates used to better tailor a graphic to the mode of publication.
+
+### Applying Pre-built Theme
+
+```{r example_theme_1, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
+# The code below applies the bw theme to the plot
+ggplot(data = nypd_data, aes(x = Race, y = Stopped)) +
+  geom_bar(stat = "identity") +
+  theme_bw() +
+  labs(title = "Number of Stops by Race", x = "Race", y = "Number of Stops")
+```
+
+Other pre-built themes:
+  
+* `theme_bw()`
+* `theme_linedraw()`, `theme_light()`, and `theme_dark()`
+* `theme_minimal()`
+* `theme_classic()`
+* `theme_void()`
+
+You can judge the differences in these themes below:
+
+```{r, echo = FALSE, fig.height = 4}
+library(patchwork)
+x <- c("A", "B", "C")
+y <- c(1, 2, 3)
+data <- data.frame(x, y)
+
+plot1 <- ggplot(data = data, aes(x = x, y = y)) +
+           geom_bar(stat = "identity") +
+           labs(title = "theme_grey()") +
+           theme_grey() +
+           theme(plot.title = element_text(hjust = 0.5))
+
+plot2 <- ggplot(data = data, aes(x = x, y = y)) +
+           geom_bar(stat = "identity") +
+           labs(title = "theme_bw()") +
+           theme_bw() +
+           theme(plot.title = element_text(hjust = 0.5))
+
+plot3 <- ggplot(data = data, aes(x = x, y = y)) +
+           geom_bar(stat = "identity") +
+           labs(title = "theme_linedraw()") +
+           theme_linedraw() +
+           theme(plot.title = element_text(hjust = 0.5))
+
+plot4 <- ggplot(data = data, aes(x = x, y = y)) +
+           geom_bar(stat = "identity") +
+           labs(title = "theme_light()") +
+           theme_light() +
+           theme(plot.title = element_text(hjust = 0.5))
+
+plot5 <- ggplot(data = data, aes(x = x, y = y)) +
+           geom_bar(stat = "identity") +
+           labs(title = "theme_dark()") +
+           theme_dark() +
+           theme(plot.title = element_text(hjust = 0.5))
+
+plot6 <- ggplot(data = data, aes(x = x, y = y)) +
+           geom_bar(stat = "identity") +
+           labs(title = "theme_minimal()") +
+           theme_minimal() +
+           theme(plot.title = element_text(hjust = 0.5))
+
+plot7 <- ggplot(data = data, aes(x = x, y = y)) +
+           geom_bar(stat = "identity") +
+           labs(title = "theme_classic()") +
+           theme_classic() +
+           theme(plot.title = element_text(hjust = 0.5))
+
+plot8 <- ggplot(data = data, aes(x = x, y = y)) +
+           geom_bar(stat = "identity") +
+           labs(title = "theme_void()") +
+           theme_void() +
+           theme(plot.title = element_text(hjust = 0.5))
+
+(plot1 | plot2 | plot3 | plot4) / (plot5 | plot6 | plot7 | plot8)
+```
+
+### Customizing Themes
+
+After applying the pre-built theme, we can also add customized features using the `theme()` function. Most commonly this function is used to remove a graph's legend:
+
+#### Example 5.1: removing graph's legend from pre-built theme
+```{r example_theme_3, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
+# The code below adds a bw theme and uses `theme()` to remove the graph's legend
+ggplot(data = nypd_data, mapping = aes(x = Race, y = Stopped, fill = Gender)) +
+  geom_bar(stat = "identity") +
+ 
+
+ theme_bw() +
+  theme(legend.position = "none") +
+  labs(title = "Number of Stops by Race without Legend", x = "Race", y = "Number of Stops")
+```
+
+#### Example 5.2: adding customized features to the theme
+```{r example_theme_4, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
+# The code below customizes font size, color, and type for title and axes
+ggplot(data = nypd_data, mapping = aes(x = Race, y = Stopped, fill = Gender)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Number of Stops by Race", x = "Race", y = "Number of Stops") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 20, face = "bold", color = "gray"),
+    axis.title.x = element_text(size = 14, face = "italic", color = "darkblue"),
+    axis.title.y = element_text(size = 14, face = "italic", color = "darkblue"),
+    axis.text = element_text(size = 12)
+  )
+```
+
+### Exercise: Apply and Customize Themes
+#### a. Use NYPD data to create a bar chart of stops by race and apply the classic theme using `theme_classic()`
+
+```{r exercise_theme_1, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
+# Write your code here
+
+```
+
+#### b. Add 3 customized features to the classic theme
+
+```{r exercise_theme_2, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
+# Write your code here
+
+```
+
+
+### Exercise 4: Create a bar chart with your choice of theme and add appropriate labels and a title.
+```{r apply_theme_exercise, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE}
+# Write your code here
+
+
+```
+<!-- END_SECTION -->
+  
+<!-- START_SECTION -->
+## Let’s Test Your Skills!
+
+Here are an app that can help you do the data wrangling and create visualizations using the NYPD data. Feel free to play around with them to generate different plots you like and observe the code behind the plots!
+
+(Need the link for the shiny apps to be added here)
+
+```{r, echo=FALSE}
+# knitr::include_app("https://your-shiny-app-link-1", height = "500px")
+```
+
+### Exercise 6: Try to create the following plots on your own and check your answers using the above apps.
+
+#### a. Create a bar chart showing the number of stops by race, faceted by gender, and customize the theme.
+
+```{r echo =FALSE}
+# Expected plot code:
+ggplot(data = nypd_data, aes(x = CrimeType, y = Stopped)) +
+  geom_bar(stat = "identity", position = "stack") +
+  facet_wrap(~Race) +
+  labs(title = "Number of Stops by Crime Type and Race", x = "Crime Type", y = "Number of Stops") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 20, face = "bold", color = "gray"),
+    axis.title.x = element_text(size = 14, face = "italic", color = "darkblue"),
+    axis.title.y = element_text(size = 14, face = "italic", color = "darkblue"),
+    axis.text = element_text(size = 12)
+  )
+```
+
+```{r exercise6a, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
+# Write your code here
+
+```
+
+#### b. Create a bar chart showing the number of stops by race, colored by year, with customized bar width and transparency.
+
+```{r echo =FALSE}
+# Expected plot code:
+ggplot(data = nypd_data, aes(x = Race, y = Stopped, fill = factor(Year))) +
+  geom_bar(stat = "identity", position = "stack", width = 0.7, alpha = 0.8) +
+  labs(title = "Number of Stops by Race and Year", x = "Race", y = "Number of Stops") +
+  theme_classic() +
+  theme(
+    plot.title = element_text(size = 20, face = "bold", color = "black"),
+    axis.title.x = element_text(size = 14, face = "italic", color = "black"),
+    axis.title.y = element_text(size = 14, face = "italic", color = "black"),
+    axis.text = element_text(size = 12)
+  )
+```
+
+```{r exercise6b, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
+# Write your code here
+
+```
+
+
+By completing these exercises, you will practice creating bar charts, customizing themes, and using faceting and coloring to enhance your visualizations.
+<!-- END_SECTION -->
+
