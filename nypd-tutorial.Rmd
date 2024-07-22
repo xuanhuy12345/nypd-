@@ -551,7 +551,7 @@ ggplot(data = nypd_data, aes(x = Race, y = Stopped, fill = factor(Year))) +
 # Use `fill = factor(Year)` to color by year.
 ```
 
-```{r exercise6b-hint-1}
+```{r exercise6b-hint-2}
 # Adjust `width` and `alpha` in `geom_bar()` for customized bar width and transparency.
 ```
 
