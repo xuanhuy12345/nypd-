@@ -3,8 +3,10 @@ library(ggplot2)
 library(dplyr)
 library(ggthemes)
 library(scales)
+library(reshape2)
+library(readr)
 
-nypd_arr <- read.csv("/Users/admin/Downloads/nypd_barcharts/NYPDBarData.csv")
+nypd_arr <- read_csv("https://raw.githubusercontent.com/skuiper/NYPD-Labs_2020/master/Data/nypd_arrestBar.csv")
 
 #Remove an outlier
 nypd_arr <- subset(nypd_arr, pct<=200)
@@ -135,58 +137,66 @@ server <- function(input, output){
   }
   
   ModifyForce <- reactive({
-    if(input$YType == "Counts"){
+    if (input$YType == "Counts") {
       nypd <- FilterNYPD(nypd)
       
       meltNYPD <- melt(nypd, id.vars = c("pct", CatOptions),
                        measure.vars = input$ModifyForce)
       
-      currentData <- data.frame("Year" = meltNYPD$Year,
-                                "Xvar" = meltNYPD[[input$Xaxis]],
-                                "variable" = meltNYPD$variable,
-                                "value" = meltNYPD$value)
+      currentData <- data.frame(
+        "Year" = meltNYPD$Year,
+        "Xvar" = meltNYPD[[input$Xaxis]],
+        "variable" = meltNYPD$variable,
+        "value" = meltNYPD$value
+      )
       
-      if(input$Facet != "None"){
+      if (input$Facet != "None") {
         currentData$Facet <- meltNYPD[[input$Facet]]
       }
-    } else{
-      if(input$YType == "ArrestPercent"){
+    } else {
+      if (input$YType == "ArrestPercent") {
         nypd <- nypd_arr
       }
       nypd <- FilterNYPD(nypd)
       
-      currentData <- data.frame("Year" = nypd$Year,
-                                "Xvar" = nypd[[input$Xaxis]],
-                                
-                                "Weapon" = nypd$Weapon,
-                                "HandCuff" = nypd$HandCuff,
-                                "Firearm" = nypd$Firearm,
-                                "CEW" = nypd$CEW,
-                                "PepperSpray" = nypd$PepperSpray,
-                                "Other" = nypd$Other)
+      currentData <- data.frame(
+        "Year" = nypd$Year,
+        "Xvar" = nypd[[input$Xaxis]],
+        "Weapon" = nypd$Weapon,
+        "HandCuff" = nypd$HandCuff,
+        "Firearm" = nypd$Firearm,
+        "CEW" = nypd$CEW,
+        "PepperSpray" = nypd$PepperSpray,
+        "Other" = nypd$Other
+      )
       
-      if(input$YType == "ArrestPercent"){
-        currentData <- mutate(currentData, DivideBy = nypd$Arrested)
-      } else if(input$YType == "Percentage"){
-        currentData <- mutate(currentData, DivideBy = nypd$Stopped)
+      if (input$YType == "ArrestPercent") {
+        currentData <- currentData %>%
+          mutate(DivideBy = nypd$Arrested)
+      } else if (input$YType == "Percentage") {
+        currentData <- currentData %>%
+          mutate(DivideBy = nypd$Stopped)
       }
       
       ddplyVariables <- c("Xvar")
       
-      if(input$Facet != "None"){
+      if (input$Facet != "None") {
         currentData$Facet <- nypd[[input$Facet]]
         ddplyVariables <- c(ddplyVariables, "Facet")
       }
       
-      currentData <- ddply(currentData, ddplyVariables, summarise,
-                           DivideBy = sum(DivideBy),
-                           Weapon = sum(Weapon) / sum(DivideBy),
-                           CEW = sum(CEW) / sum(DivideBy),
-                           
-                           HandCuff = sum(HandCuff) / sum(DivideBy),
-                           Firearm = sum(Firearm) / sum(DivideBy),
-                           PepperSpray = sum(PepperSpray) / sum(DivideBy),
-                           Other = sum(Other) / sum(DivideBy))
+      currentData <- currentData %>%
+        group_by(across(all_of(ddplyVariables))) %>%
+        summarise(
+          DivideBy = sum(DivideBy),
+          Weapon = sum(Weapon) / sum(DivideBy),
+          CEW = sum(CEW) / sum(DivideBy),
+          HandCuff = sum(HandCuff) / sum(DivideBy),
+          Firearm = sum(Firearm) / sum(DivideBy),
+          PepperSpray = sum(PepperSpray) / sum(DivideBy),
+          Other = sum(Other) / sum(DivideBy),
+          .groups = 'drop'
+        )
       
       currentData <- melt(currentData, id.vars = ddplyVariables,
                           measure.vars = input$ModifyForce)
@@ -195,114 +205,118 @@ server <- function(input, output){
     currentData
   })
   
-  prepareCountsData <- reactive({
-    nypd <- FilterNYPD(nypd)
+prepareCountsData <- reactive({
+  nypd <- FilterNYPD(nypd)
+  if(input$Color != "None"){
+    nypd <- arrange(nypd, nypd[[input$Color]])
+  }
+  
+  if(!is.null(input$ModifyForce) & input$Yaxis == "Force"){
+    currentData <- ModifyForce()
+  } else{
+    currentData <- data.frame("Year" = nypd$Year,
+                              "Xvar" = nypd[[input$Xaxis]],
+                              "Yvar" = nypd[[input$Yaxis]],
+                              "Stopped" = nypd$Stopped,
+                              "Arrested" = nypd$Arrested
+    )
+    
+    if(input$Facet != "None"){
+      currentData$Facet <- nypd[[input$Facet]]
+    }
+    
     if(input$Color != "None"){
-      nypd <- arrange(nypd, nypd[[input$Color]])
+      currentData$Color <- nypd[[input$Color]]
     }
-    
-    if(!is.null(input$ModifyForce) & input$Yaxis == "Force"){
-      currentData <- ModifyForce()
-    } else{
-      currentData <- data.frame("Year" = nypd$Year,
-                                "Xvar" = nypd[[input$Xaxis]],
-                                "Yvar" = nypd[[input$Yaxis]],
-                                "Stopped" = nypd$Stopped,
-                                "Arrested" = nypd$Arrested
-      )
-      
-      if(input$Facet != "None"){
-        currentData$Facet <- nypd[[input$Facet]]
-      }
-      
-      if(input$Color != "None"){
-        currentData$Color <- nypd[[input$Color]]
-      }
-    }
-    
-    currentData
-  })
+  }
+
+  # Group by Xvar, Color (if present), and Facet (if present)
+  group_vars <- c("Xvar")
+  if(input$Color != "None") group_vars <- c(group_vars, "Color")
+  if(input$Facet != "None") group_vars <- c(group_vars, "Facet")
+  
+  currentData <- currentData %>%
+    group_by(across(all_of(group_vars))) %>%
+    summarise(Yvar = sum(Yvar), .groups = "drop")
+  
+  currentData
+})
+  
+  library(data.table)
   
   preparePercentData <- reactive({
-    if(input$YType == "ArrestPercent"){
+    if (input$YType == "ArrestPercent") {
       nypd <- nypd_arr
     }
     nypd <- FilterNYPD(nypd)
-    if(input$Color != "None"){
+    if (input$Color != "None") {
       nypd <- arrange(nypd, nypd[[input$Color]])
     }
     
-    if(!is.null(input$ModifyForce) & input$Yaxis == "Force"){
+    if (!is.null(input$ModifyForce) & input$Yaxis == "Force") {
       currentData <- ModifyForce()
-    } else{
-      currentData <- data.frame("Year" = nypd$Year,
-                                "Xvar" = nypd[[input$Xaxis]],
-                                "Yvar" = nypd[[input$Yaxis]],
-                                "Stopped" = nypd$Stopped,
-                                "Arrested" = nypd$Arrested                                    
+    } else {
+      currentData <- data.frame(
+        "Year" = nypd$Year,
+        "Xvar" = nypd[[input$Xaxis]],
+        "Yvar" = nypd[[input$Yaxis]],
+        "Stopped" = nypd$Stopped,
+        "Arrested" = nypd$Arrested
       )
       
-      if(input$YType == "ArrestPercent"){
+      if (input$YType == "ArrestPercent") {
         currentData <- mutate(currentData, DivideBy = nypd$Arrested)
-      } else if(input$YType == "Percentage"){
+      } else if (input$YType == "Percentage") {
         currentData <- mutate(currentData, DivideBy = nypd$Stopped)
       }
       
-      ddplyVariables <- c("Xvar")
+      group_vars <- c("Xvar")
       
-      if(input$Facet != "None"){
-        currentData$Facet <- nypd[[input$Facet]]
-        ddplyVariables <- c(ddplyVariables, "Facet")
+      if (input$Facet != "None") {
+        currentData <- mutate(currentData, Facet = nypd[[input$Facet]])
+        group_vars <- c(group_vars, "Facet")
       }
       
-      
-      
-      if(input$Color != "None"){
-        currentData$Color <- nypd[[input$Color]]
-        ddplyVariables <- c(ddplyVariables, "Color")
+      if (input$Color != "None") {
+        currentData <- mutate(currentData, Color = nypd[[input$Color]])
+        group_vars <- c(group_vars, "Color")
       }
       
+      currentData <- currentData %>%
+        group_by(across(all_of(group_vars))) %>%
+        summarise(
+          totalYvar = sum(Yvar),
+          DivideBy = sum(DivideBy),
+          Stopped = sum(Stopped),
+          Arrested = sum(Arrested),
+          .groups = 'drop'
+        )
       
-      #currentData <- ddply(currentData, ddplyVariables, summarise,
-      #                    totalYvar = sum(Yvar), DivideBy = sum(DivideBy))
+      currentData <- mutate(currentData, Percentage = totalYvar / DivideBy)
       
-      #Yusen's revision
-      currentData <- ddply(currentData, ddplyVariables, summarise,
-                           totalYvar = sum(Yvar), DivideBy = sum(DivideBy), Stopped = sum(Stopped), Arrested = sum(Arrested))
-      
-      currentData$Percentage <- currentData$totalYvar / currentData$DivideBy
-      
-      
-      #Yusen's revision
-      if(input$Color != "None"){
-        
-        if(input$YType == "ArrestPercent"){
-          setDT(currentData)[ , sum.value := sum(Arrested), by = Xvar]
+      if (input$Color != "None") {
+        setDT(currentData)
+        if (input$YType == "ArrestPercent") {
+          currentData[, sum.value := sum(Arrested), by = Xvar]
+        } else if (input$YType == "Percentage") {
+          currentData[, sum.value := sum(Stopped), by = Xvar]
         }
         
-        else if(input$YType == "Percentage"){
-          setDT(currentData)[ , sum.value := sum(Stopped), by = Xvar]
+        if (input$Facet == "None") {
+          currentData <- mutate(currentData, true_perc = totalYvar / sum.value)
+        } else {
+          currentData[, sum.value := sum(DivideBy), by = .(Xvar, Facet)]
+          currentData <- mutate(currentData, true_perc = totalYvar / sum.value)
         }
         
-        #If Facet is non
-        if(input$Facet == "None"){
-          currentData <- mutate(currentData, true_perc = totalYvar/sum.value)
-          
-        }
-        else{
-          setDT(currentData)[ , sum.value := sum(DivideBy), by = .(Xvar,Facet)]
-          currentData <- mutate(currentData, true_perc = totalYvar/sum.value)
-        }
-        
-        currentData <- select(currentData, -c(Percentage))
-        currentData <- mutate(currentData, Percentage = true_perc)
-        currentData <- select(currentData, -c(true_perc))
-        currentData <- mutate(currentData, DivideBy = sum.value)
-        currentData <- select(currentData, -c(sum.value))
-        
-        
+        currentData <- currentData %>%
+          select(-Percentage) %>%
+          mutate(
+            Percentage = true_perc,
+            DivideBy = sum.value
+          ) %>%
+          select(-true_perc, -sum.value)
       }
-      
     }
     
     currentData
@@ -375,31 +389,33 @@ server <- function(input, output){
       currentPlot <- ggplot(
         data = currentData,
         aes(x = Xvar, y = value, fill = variable)) +
-        geom_bar(position="stack", stat="identity") +
+        geom_bar(stat = "identity", position = "stack") +
         scale_colour_manual(values=customColors) +
         xlab("Force")+
-        theme_hc()+
+        theme_minimal()+
         theme(text = element_text(size = 20))
     } else{
       if(input$YType == "Counts"){
         currentPlot <- ggplot(
           data=currentData,
-          aes(x = Xvar, y = Yvar))+
-          theme_hc()+
+          aes(x = Xvar, y = Yvar)) +
+          theme_minimal() +
           theme(text = element_text(size = 20))
-      } else if (input$YType == "Percentage")
-      {
-        #setDT(currentData)[ , sum.value := sum(DivideBy), by = Xvar]
-        #currentData <- mutate(currentData, true_perc = totalYvar/sum.value)
-        #currentData <- select(currentData, -c(Percentage))
-        #currentData <- mutate(currentData, Percentage = true_perc)
-        currentPlot <- ggplot(
-          data=currentData,
-          aes(x = Xvar, y = Percentage))+
-          theme_hc()+
-          theme(text = element_text(size = 20))
-      }
-      else if (input$YType == "ArrestPercent"){
+        
+        # Add fill aesthetic if Color is selected
+        if(input$Color != "None"){
+          currentPlot <- currentPlot + 
+            aes(fill = Color) +
+            scale_colour_manual(values = customColors)
+        }
+        
+        currentPlot <- currentPlot + 
+          geom_bar(stat = "identity", position = "stack") +
+          xlab(input$Xaxis) + 
+          scale_y_continuous(labels = comma) +
+          theme(legend.position = "right", axis.title = element_text(size = 18))
+        
+      } else if (input$YType == "Percentage" | input$YType == "ArrestPercent") {
         #setDT(currentData)[ , sum.value := sum(DivideBy), by = Xvar]
         #currentData <- mutate(currentData, true_perc = totalYvar/sum.value)
         #currentData <- select(currentData, -c(Percentage))
@@ -407,7 +423,7 @@ server <- function(input, output){
         currentPlot <- ggplot(
           data=currentData,
           aes(x = Xvar, y = Percentage))+
-          theme_hc()+
+          theme_minimal()+
           theme(text = element_text(size = 20))
       }
       
@@ -479,10 +495,10 @@ server <- function(input, output){
     code <- paste0(code, "  geom_bar(stat = 'identity', position = 'stack') +\n")
     
     if (!is.null(colorvar)) {
-      code <- paste0(code, "  scale_fill_manual(values = customColors) +\n")
+      code <- paste0(code, "  scale_colour_manual(values = customColors) +\n")
     }
     
-    code <- paste0(code, "  theme_hc() +\n")
+    code <- paste0(code, "  theme_minimal() +\n")
     code <- paste0(code, "  theme(text = element_text(size = 20)) +\n")
     code <- paste0(code, "  theme(axis.title = element_text(size = 18)) +\n")
     
