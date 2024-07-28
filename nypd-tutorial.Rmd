@@ -22,7 +22,7 @@ library(ggthemes)
 FIG_HEIGHT = 2
 
 ####### Read in the nypd dataset #######
-nypd_arr <- read_csv("NYPDBarData.csv")
+nypd_arr <- read_csv("https://raw.githubusercontent.com/skuiper/NYPD-Labs_2020/master/Data/nypd_arrestBar.csv")
 
 #Remove an outlier
 nypd_arr <- subset(nypd_arr, pct<=200)
